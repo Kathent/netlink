@@ -125,13 +125,17 @@ func SocketGet(local, remote net.Addr) (*Socket, error) {
 	if !ok {
 		return nil, ErrNotImplemented
 	}
-	localIP := localTCP.IP.To4()
-	if localIP == nil {
-		return nil, ErrNotImplemented
-	}
-	remoteIP := remoteTCP.IP.To4()
-	if remoteIP == nil {
-		return nil, ErrNotImplemented
+	// localIP := localTCP.IP.To4()
+	// if localIP == nil {
+	// 	return nil, ErrNotImplemented
+	// }
+	// remoteIP := remoteTCP.IP.To4()
+	// if remoteIP == nil {
+	// 	return nil, ErrNotImplemented
+	// }
+	var family uint8 = unix.AF_INET
+	if localTCP.IP.To4() == nil && remoteTCP.IP.To4() == nil {
+		family = unix.AF_INET6
 	}
 
 	s, err := nl.Subscribe(unix.NETLINK_INET_DIAG)
@@ -141,13 +145,13 @@ func SocketGet(local, remote net.Addr) (*Socket, error) {
 	defer s.Close()
 	req := nl.NewNetlinkRequest(nl.SOCK_DIAG_BY_FAMILY, 0)
 	req.AddData(&socketRequest{
-		Family:   unix.AF_INET,
+		Family:   family,
 		Protocol: unix.IPPROTO_TCP,
 		ID: SocketID{
 			SourcePort:      uint16(localTCP.Port),
 			DestinationPort: uint16(remoteTCP.Port),
-			Source:          localIP,
-			Destination:     remoteIP,
+			Source:          localTCP.IP,
+			Destination:     remoteTCP.IP,
 			Cookie:          [2]uint32{nl.TCPDIAG_NOCOOKIE, nl.TCPDIAG_NOCOOKIE},
 		},
 	})
